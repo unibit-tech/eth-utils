@@ -10,6 +10,8 @@ version: '3.3'
 networks:
   local_eth_utils:
 
+# TODO: add a remote Synapsics Docker Registry and push the images
+
 # Services:
 services:
   # Miner node
@@ -191,7 +193,6 @@ services:
 
   usdc-fund-addresses:
     build: ./geth
-    image: registry.gitlab.com/sibex/sibex/geth-wrapped-image
     hostname: usdc-fund-addresses
     container_name: usdc-fund-addresses
     depends_on:

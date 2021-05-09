@@ -19,3 +19,21 @@ shell
    1. `export PATH=./scripts/:./:./tools/:$GOPATH/bin:$PATH`
 1. run `start` in the project root to start the local ethereum stack (2 nodes from which one is mining)
 1. running start will also deploy usdt and usdc contract in the blockchain
+1. run `stop` to destroy the docker containers, network
+
+### How to deploy a smart contract
+1. place the smartcontract inside `eth-utils/contracts`
+   1. we use as example `SafeMath.sol`
+1. inside the project root, run `deploy-contract.sh SafeMath` (notice we are not passing .sol file type)
+1. if the contract compiles, it will be deployed, you should notice a new tx created in the blockchain
+and Docker should return an output similar to the SafeMath output:
+```
+{"jsonrpc":"2.0","id":1,"result":null}
+waiting for the transaction hash (0xb897cd4200c80a5d85bb2c5c1539d296bc4b8fc261ee341e0652b58921a2810c) to be available...
+{"jsonrpc":"2.0","id":1,"result":{"blockHash":"0x80d200c90bd1fc537396acf9cd570412738f0ef609b849fa600004fec0954ef6",
+"blockNumber":"0x46a","contractAddress":"0x4a2dbb178b10d38e7e6eb2f897ad5bd41b2978ee","cumulativeGasUsed":"0x12b6e",
+"from":"0xe022cfd8c97a67c298729200e1ee3381e8f16547","gasUsed":"0x12b6e","logs":[],
+"logsBloom":"0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","status":"0x1","to":null,"transactionHash":"0xb897cd4200c80a5d85bb2c5c1539d296bc4b8fc261ee341e0652b58921a2810c","transactionIndex":"0x0","type":"0x0"}}
+Contract address is: 0x4a2dbb178b10d38e7e6eb2f897ad5bd41b2978ee
+Saving contract address to /root/contracts/SafeMath/SafeMath-address.txt
+```
