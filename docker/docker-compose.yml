@@ -6,16 +6,13 @@ version: '3.3'
 # Starts some ethereum nodes and utils that are used to deploy and test contracts
 #############################
 
-#############################
 # Networks:
-#############################
 networks:
   local_eth_utils:
 
-#############################
 # Services:
-#############################
 services:
+  # Miner node
   geth-bootstrap:
     build: ./geth
     image: geth-bootstrap
@@ -41,7 +38,8 @@ services:
       - "11111:11111"
       - "11111:11111/udp"
       - "22222:22222"
-        
+
+  # Main ETH node
   geth-node:
     build: ./geth
     image: geth-node
@@ -61,10 +59,161 @@ services:
     networks:
       - local_eth_utils
     ports:
-      - "8545:8545"        
+      - "8545:8545"
 
-#############################
+    # COMPILE, DEPLOY AND FUND ERC20 CONTRACTS
+    # USDT
+  usdt-compile:
+    image: ethereum/solc:0.5.16-alpine
+    hostname: usdt-compile
+    container_name: usdt-compile
+    depends_on:
+      - geth-bootstrap
+    working_dir: /root
+    entrypoint: [ "sh", "contract-compile-solc.sh" ]
+    environment:
+      CONTRACT_FILE_PATH: /root/contracts/usdt_0.5.11.sol
+      CONTRACT_OUTPUT_PATH: /root/contracts/usdt
+    networks:
+      - local_eth_utils
+    volumes:
+      - ../scripts/contract-compile-solc.sh:/root/contract-compile-solc.sh:ro
+      - ../contracts/usdt_0.5.11.sol:/root/contracts/usdt_0.5.11.sol:ro
+      - contract-assets-dir:/root/contracts/
+
+  usdt-deploy:
+    build: ./geth
+    hostname: usdt-deploy
+    container_name: usdt-deploy
+    depends_on:
+      - geth-bootstrap
+      - usdt-compile
+    working_dir: /root
+    entrypoint: [ "sh", "contract-deploy-eth.sh" ]
+    environment:
+      # Contract binary (already compiled)
+      CONTRACT_BIN_FILE_PATH: /root/contracts/usdt/TetherToken.bin
+      # Wait until the file specified on var "CONTRACT_BIN_FILE_PATH"
+      # to become available
+      WAIT_FOR_CONTRACT_BIN_FILE_PATH: "true"
+      # Contract Name:
+      CONTRACT_NAME: TetherToken
+      # Input Data: initial supply at contract owner 2'000'000 USDT
+      # {
+      # "uint256 _initialSupply": {
+      #   "_hex": "0x01d1a94a2000"
+      # },
+      # "string _name": "Tether",
+      # "string _symbol": "USDT",
+      # "uint256 _decimals": {
+      #   "_hex": "0x06"
+      # }
+      CONTRACT_ARGS: "000000000000000000000000000000000000000000000000000001d1a94a2000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000b546574686572546f6b656e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000045553445400000000000000000000000000000000000000000000000000000000"
+      # Owner address set to the geth-bootstrap one
+      CONTRACT_OWNER_ADDR: "0xe022cfD8c97a67c298729200E1Ee3381E8f16547"
+      CONTRACT_ADDRESS_OUTPUT_PATH: /root/contracts/usdt/usdt-address.txt
+      ETH_NODE_HOST: geth-bootstrap:22222
+    networks:
+      - local_eth_utils
+    volumes:
+      - ../scripts/contract-deploy-eth.sh:/root/contract-deploy-eth.sh:ro
+      - contract-assets-dir:/root/contracts/
+
+  usdt-fund-addresses:
+    build: ./geth
+    hostname: usdt-fund-addresses
+    container_name: usdt-fund-addresses
+    depends_on:
+      - geth-bootstrap
+      - usdt-deploy
+    working_dir: /root
+    entrypoint: [ "sh", "-c" ]
+    command: "'sh wait-for-file.sh /root/contracts/usdt/usdt-address.txt && bash fund-usdt-wallets.sh'"
+    environment:
+      ETH_LIST_ADDRESSES_TO_FUND: "0xe022cfD8c97a67c298729200E1Ee3381E8f16547,0xCB03e0de03c787f78f2C348FCd1F9621E309cA1F,0x75DaAd55abD1505ED4D0A82A873F297fd8c894b5,0x7a419e412B8F0BadaBc44F51B415e32bCA0870D9,0xf86561a381d616147ef510bd41f04532e593384c,0x25397140eF847EEa96E43934EB1fBad0840F2b17"
+      # Owner address set to the geth-bootstrap one
+      CONTRACT_OWNER_ADDR: "0xe022cfD8c97a67c298729200E1Ee3381E8f16547"
+      CONTRACT_ADDRESS_PATH: /root/contracts/usdt/usdt-address.txt
+      ETH_NODE_HOST: geth-bootstrap:22222
+    networks:
+      - local_eth_utils
+    volumes:
+      - ../scripts/wait-for-file.sh:/root/wait-for-file.sh:ro
+      - ../scripts/fund-usdt-wallets.sh:/root/fund-usdt-wallets.sh:ro
+      - contract-assets-dir:/root/contracts/
+  # USDC
+  usdc-compile:
+    image: ethereum/solc:0.4.24
+    hostname: usdc-compile
+    container_name: usdc-compile
+    depends_on:
+      - geth-bootstrap
+    working_dir: /root
+    entrypoint: [ "sh", "contract-compile-solc.sh" ]
+    environment:
+      CONTRACT_FILE_PATH: /root/contracts/usdc.sol
+      CONTRACT_OUTPUT_PATH: /root/contracts/usdc
+    networks:
+      - local_eth_utils
+    volumes:
+      - ../scripts/contract-compile-solc.sh:/root/contract-compile-solc.sh:ro
+      - ../contracts/usdc.sol:/root/contracts/usdc.sol:ro
+      - contract-assets-dir:/root/contracts/
+
+  usdc-deploy:
+    build: ./geth
+    hostname: usdc-deploy
+    container_name: usdc-deploy
+    depends_on:
+      - geth-bootstrap
+      - usdc-compile
+    working_dir: /root
+    entrypoint: [ "sh", "contract-deploy-eth.sh" ]
+    environment:
+      # Contract binary (already compiled)
+      CONTRACT_BIN_FILE_PATH: /root/contracts/usdc/FiatTokenV1.bin
+      # Wait until the file specified on var "CONTRACT_BIN_FILE_PATH"
+      # to become available
+      WAIT_FOR_CONTRACT_BIN_FILE_PATH: "true"
+      # Contract Name:
+      CONTRACT_NAME: FiatTokenV1
+      # Input Data: No input data for usdc initialization
+      CONTRACT_ARGS: ""
+      # Owner address set to the geth-bootstrap one
+      CONTRACT_OWNER_ADDR: "0xe022cfD8c97a67c298729200E1Ee3381E8f16547"
+      CONTRACT_ADDRESS_OUTPUT_PATH: /root/contracts/usdc/usdc-address.txt
+      ETH_NODE_HOST: geth-bootstrap:22222
+    networks:
+      - local_eth_utils
+    volumes:
+      - ../scripts/contract-deploy-eth.sh:/root/contract-deploy-eth.sh:ro
+      - contract-assets-dir:/root/contracts/
+
+  usdc-fund-addresses:
+    build: ./geth
+    image: registry.gitlab.com/sibex/sibex/geth-wrapped-image
+    hostname: usdc-fund-addresses
+    container_name: usdc-fund-addresses
+    depends_on:
+      - geth-bootstrap
+      - usdc-deploy
+    working_dir: /root
+    entrypoint: [ "sh", "-c" ]
+    command: "'sh wait-for-file.sh /root/contracts/usdc/usdc-address.txt && bash /root/fund-usdc-wallets.sh'"
+    environment:
+      ETH_LIST_ADDRESSES_TO_FUND: "0xe022cfD8c97a67c298729200E1Ee3381E8f16547,0xCB03e0de03c787f78f2C348FCd1F9621E309cA1F,0x75DaAd55abD1505ED4D0A82A873F297fd8c894b5,0x7a419e412B8F0BadaBc44F51B415e32bCA0870D9,0xf86561a381d616147ef510bd41f04532e593384c,0x25397140eF847EEa96E43934EB1fBad0840F2b17"
+      CONTRACT_OWNER_ADDR: "0xe022cfD8c97a67c298729200E1Ee3381E8f16547"
+      CONTRACT_ADDRESS_PATH: /root/contracts/usdc/usdc-address.txt
+      ETH_NODE_HOST: geth-bootstrap:22222
+    networks:
+      - local_eth_utils
+    volumes:
+      - ../scripts/wait-for-file.sh:/root/wait-for-file.sh:ro
+      - ../scripts/wait-for-transaction.sh:/root/wait-for-transaction.sh:ro
+      - ../scripts/fund-usdc-wallets.sh:/root/fund-usdc-wallets.sh:ro
+      - contract-assets-dir:/root/contracts/
+
+
 # Volumes:
-#############################
 volumes:
   contract-assets-dir:

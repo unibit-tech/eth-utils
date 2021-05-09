@@ -1,0 +1,76 @@
+#!/usr/bin/env sh
+
+INIT_USDC="0x3357162b0000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000001800000000000000000000000000000000000000000000000000000000000000006000000000000000000000000e022cfd8c97a67c298729200e1ee3381e8f16547000000000000000000000000e022cfd8c97a67c298729200e1ee3381e8f16547000000000000000000000000e022cfd8c97a67c298729200e1ee3381e8f16547000000000000000000000000e022cfd8c97a67c298729200e1ee3381e8f16547000000000000000000000000000000000000000000000000000000000000000455534443000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004555344430000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000045553444300000000000000000000000000000000000000000000000000000000"
+INIT_MINTER="0x4e44d956000000000000000000000000e022cfd8c97a67c298729200e1ee3381e8f1654700000000000000000000000000000000000000000000000000005af3107a4000"
+
+NODE_HOST=${ETH_NODE_HOST:-localhost:8545}
+OWNER_ADDR=${CONTRACT_OWNER_ADDR:-0xe022cfD8c97a67c298729200E1Ee3381E8f16547}
+ADDRESS_FILE_PATH=${CONTRACT_ADDRESS_PATH}
+CONTRACT_ADDR=$(cat "${ADDRESS_FILE_PATH}")
+LIST_ADDRESSES_TO_FUND=${ETH_LIST_ADDRESSES_TO_FUND:-}
+
+wait4ports tcp://${NODE_HOST}
+
+# wait unlock account is unlocked (the first one in the array!)
+while [ "${ACCOUNT_STATUS}" != "Unlocked" ]; do
+  echo "waiting account to be unlocked on ${NODE_HOST} to become available..."
+  ACCOUNT_STATUS=$(curl -s \
+      --data "{\"method\":\"personal_listWallets\",\"params\":[],\"id\":1,\"jsonrpc\":\"2.0\"}" \
+      -H "Content-Type: application/json" \
+      -X "POST" \
+      "${NODE_HOST}" \
+      | jq -r '.result[0] .status')
+  echo "ACCOUNT_STATUS=${ACCOUNT_STATUS}"
+  sleep 5
+done
+
+TX_SEND_RESULT=$(curl -s \
+  --data "{\"method\":\"eth_sendTransaction\",\"params\":[{\"from\":\"${OWNER_ADDR}\",\"to\":\"${CONTRACT_ADDR}\",\"gas\":\"0xC3500\",\"data\":\"${INIT_USDC:-}\"}],\"id\":1,\"jsonrpc\":\"2.0\"}" \
+  -H "Content-Type: application/json" \
+  -X "POST" \
+  "${NODE_HOST}")
+
+  echo "Result of eth_sendTransaction:"
+  echo "${TX_SEND_RESULT}"
+
+TX_RECEIPT_HASH=$(echo "${TX_SEND_RESULT}" | jq -r '.result')
+sh wait-for-transaction.sh "${NODE_HOST}" "${TX_RECEIPT_HASH}"
+
+TX_SEND_RESULT=$(curl -s \
+  --data "{\"method\":\"eth_sendTransaction\",\"params\":[{\"from\":\"${OWNER_ADDR}\",\"to\":\"${CONTRACT_ADDR}\",\"gas\":\"0xC3500\",\"data\":\"${INIT_MINTER:-}\"}],\"id\":1,\"jsonrpc\":\"2.0\"}" \
+  -H "Content-Type: application/json" \
+  -X "POST" \
+  "${NODE_HOST}")
+
+  echo "Result of eth_sendTransaction:"
+  echo "${TX_SEND_RESULT}"
+
+TX_RECEIPT_HASH=$(echo "${TX_SEND_RESULT}" | jq -r '.result')
+sh wait-for-transaction.sh "${NODE_HOST}" "${TX_RECEIPT_HASH}"
+
+PREFIX="40c10f19000000000000000000000000"
+SUFFIX="0000000000000000000000000000000000000000000000000000000001406f40"
+if [ -n "${LIST_ADDRESSES_TO_FUND}" ]; then
+  IFS="," read -ra LIST_ADDRESSES_TO_FUND_ARRAY <<< "${LIST_ADDRESSES_TO_FUND}"
+fi
+
+# Pre-fund all listed addresses
+for ADDRESS in "${LIST_ADDRESSES_TO_FUND_ARRAY[@]}";
+do
+  ADDRESS=$(echo "${ADDRESS}" | sed -e 's/^0x//')
+  CONTRACT_DATA="0x${PREFIX}${ADDRESS,,}${SUFFIX}"
+
+  echo "OWNER_ADDR=${OWNER_ADDR}"
+  echo "ADDRESS=${ADDRESS}"
+  echo "CONTRACT_ADDR=${CONTRACT_ADDR}"
+  echo "CONTRACT_DATA=${CONTRACT_DATA}"
+
+  TX_SEND_RESULT=$(curl -s \
+    --data "{\"method\":\"eth_sendTransaction\",\"params\":[{\"from\":\"${OWNER_ADDR}\",\"to\":\"${CONTRACT_ADDR}\",\"gas\":\"0xC3500\",\"data\":\"${CONTRACT_DATA:-}\"}],\"id\":1,\"jsonrpc\":\"2.0\"}" \
+    -H "Content-Type: application/json" \
+    -X "POST" \
+    "${NODE_HOST}")
+
+  TX_RECEIPT_HASH=$(echo "${TX_SEND_RESULT}" | jq -r '.result')
+  sh wait-for-transaction.sh "${NODE_HOST}" "${TX_RECEIPT_HASH}"
+done

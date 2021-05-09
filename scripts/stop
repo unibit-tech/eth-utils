@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+cd ./docker || exit
+docker compose down
