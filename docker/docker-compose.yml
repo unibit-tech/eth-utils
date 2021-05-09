@@ -1,0 +1,68 @@
+version: '3.3'
+
+#############################
+# ETH UTILS DOCKER COMPOSE:
+#############################
+# Starts some ethereum nodes and utils that are used to deploy and test contracts
+#############################
+
+#############################
+# Networks:
+#############################
+networks:
+  local_eth_utils:
+
+#############################
+# Services:
+#############################
+services:
+  geth-bootstrap:
+    build: ./geth
+    image: geth-bootstrap
+    restart: on-failure
+    hostname: geth-bootstrap
+    container_name: geth-bootstrap
+    command: '--datadir=/root/.ethereum/privatenet --nodekey=/root/privatenet-bootnode.key
+    --syncmode "full" --http.corsdomain="*" --http --http.addr 0.0.0.0 --http.port 22222 --nat extip:0.0.0.0
+    --http.api personal,eth,net,web3,admin --allow-insecure-unlock --port 11111 --http.corsdomain="*"
+     --http.vhosts="*" --miner.gasprice "1" --unlock "0xe022cfD8c97a67c298729200E1Ee3381E8f16547"
+     --password /root/bootstrap-wallet-pass.txt --networkid 233 --mine'
+    volumes:
+      - ./geth/wallet/bootstrap-wallet-pass.txt:/root/bootstrap-wallet-pass.txt:ro
+      - ./geth/wallet:/root/.ethereum/privatenet/keystore:ro
+      - ./geth/blockchain/privatenet-bootnode.key:/root/privatenet-bootnode.key:ro
+      - ./geth/blockchain/privatenet-genesis.json:/root/privatenet-genesis.json:ro
+      - contract-assets-dir:/root/contracts/
+      - ../scripts/wait-for-file.sh:/root/wait-for-file.sh:ro
+    networks:
+      - local_eth_utils
+    ports:
+      - "11111:11111"
+      - "11111:11111/udp"
+      - "22222:22222"
+        
+  geth-node:
+    build: ./geth
+    image: geth-node
+    restart: on-failure
+    depends_on:
+      - geth-bootstrap
+    container_name: geth-node
+    hostname: geth-node
+    command: '--datadir=/root/.ethereum/privatenet --syncmode "full" --http
+     --http.addr 0.0.0.0 --http.port 8545 --http.api eth,net,web3 --port 30303 --http.corsdomain="*" 
+     --http.vhosts="*"
+     --bootnodes="enode://76eecb1a72d974764d17ab5968fc890344eae4e9107d678e0e9d24655d41b965d08c6d18e16d60d3a952706b4728992d9a22f83b446eeb9b873ec228a91fc9e1@XXXXXXXXX:11111"
+      --miner.gasprice "1" --networkid 233'
+    volumes:
+      - ./geth/blockchain/privatenet-genesis.json:/root/privatenet-genesis.json:ro
+    networks:
+      - local_eth_utils
+    ports:
+      - "8545:8545"        
+
+#############################
+# Volumes:
+#############################
+volumes:
+  contract-assets-dir:
