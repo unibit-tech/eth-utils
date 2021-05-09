@@ -22,6 +22,7 @@ services:
     restart: on-failure
     hostname: geth-bootstrap
     container_name: geth-bootstrap
+    entrypoint: [ "sh", "/root/run.sh" ]
     command: '--datadir=/root/.ethereum/privatenet --nodekey=/root/privatenet-bootnode.key
     --syncmode "full" --http.corsdomain="*" --http --http.addr 0.0.0.0 --http.port 22222 --nat extip:0.0.0.0
     --http.api personal,eth,net,web3,admin --allow-insecure-unlock --port 11111 --http.corsdomain="*"
@@ -49,6 +50,7 @@ services:
       - geth-bootstrap
     container_name: geth-node
     hostname: geth-node
+    entrypoint: [ "sh", "/root/run.sh" ]
     command: '--datadir=/root/.ethereum/privatenet --syncmode "full" --http
      --http.addr 0.0.0.0 --http.port 8545 --http.api eth,net,web3 --port 30303 --http.corsdomain="*" 
      --http.vhosts="*"
