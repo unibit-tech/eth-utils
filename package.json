@@ -1,0 +1,8 @@
+{
+  "name": "eth-utils",
+  "version": "1.0.0",
+  "dependencies": {},
+  "devDependencies": {
+    "ethers": "^5.3.1"
+  }
+}
