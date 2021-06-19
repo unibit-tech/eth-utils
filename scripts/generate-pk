@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 
 if [ "$#" -ne 1 ]; then
-  echo "Usage: $0 FILE" >&2
+  echo "Usage: $0 mnemonic" >&2
   exit 1
 fi
 

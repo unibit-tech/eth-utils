@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "dependencies": {},
   "devDependencies": {
+    "ethereumjs-tx": "^2.1.2",
     "ethers": "^5.3.1"
   }
 }

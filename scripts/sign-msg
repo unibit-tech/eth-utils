@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+
+if [ "$#" -ne 2 ]; then
+  echo "Usage: $0 mnemonic message" >&2
+  exit 1
+fi
+
+node ./src/wallet/sign-transaction.js "$1" "$2"
