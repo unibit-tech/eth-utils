@@ -7,6 +7,7 @@ Local stack for operations on an Ethereum blockchain
 3. Mine Ethereum nodes
 4. Call deployed contracts with test data
 5. Init an account and get the private / public key from mnemonic
+6. Get private key from keystore file
 
 ### Requirements
 * docker
